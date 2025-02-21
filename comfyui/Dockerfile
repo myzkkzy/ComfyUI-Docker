@@ -49,7 +49,8 @@ RUN apt-get update && apt-get install -y \
     tzdata \
     software-properties-common \
     wget \
-    gnupg2 && \
+    gnupg2 \ 
+    gosu && \
     ln -fs /usr/share/zoneinfo/$TZ /etc/localtime && \
     echo "$TZ" > /etc/timezone && \
     dpkg-reconfigure --frontend noninteractive tzdata
@@ -74,12 +75,25 @@ RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86
 COPY --from=builder /usr/local/lib/python3.11 /usr/local/lib/python3.11
 COPY --from=builder /usr/local/bin /usr/local/bin
 
+# --- ここからユーザ関連の設定 ---
+# ビルド引数でログインユーザ情報を受け取る
+ARG USERNAME
+ARG UID
+ARG GID
+
+# 非rootユーザ作成
+# ユーザーのホームディレクトリに ComfyUI を設置
+RUN groupadd -g ${GID} ${USERNAME} && \
+    useradd -m -u ${UID} -g ${GID} ${USERNAME}
+
 # Entrypoint のシェルスクリプトをコピー
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY entrypoint.sh /home/${USERNAME}/entrypoint.sh
+RUN chmod +x /home/${USERNAME}/entrypoint.sh && chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/
+# --- ここまでユーザ関連の設定 ---
 
 # Web UI 用のポートを公開
 EXPOSE 8188
 
-# コンテナ起動時に entrypoint.sh を実行
-ENTRYPOINT ["/entrypoint.sh"]
+# コンテナ起動時に entrypoint.sh を実行（非rootユーザで実行）
+USER ${USERNAME}
+ENTRYPOINT ["sh", "-c", "/home/${USERNAME}/entrypoint.sh"]

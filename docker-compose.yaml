@@ -3,13 +3,21 @@ services:
     build:
       context: ./comfyui
       dockerfile: Dockerfile
+      args:
+        USERNAME: ${USERNAME}
+        UID: ${UID}
+        GID: ${GID}
     container_name: comfyui
+    user: ${UID}:${GID}
     ports:
       - "8188:8188"
     volumes:
-      - ./comfyui/ComfyUI:/ComfyUI
+      - ./comfyui/ComfyUI:/home/${USERNAME}/ComfyUI
     environment:
       - TZ=Asia/Tokyo
+      - USERNAME=${USERNAME}
+      - UID=${UID}
+      - GID=${GID}
     deploy:
       resources:
         reservations:
